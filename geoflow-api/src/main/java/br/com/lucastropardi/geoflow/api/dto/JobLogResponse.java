@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 public record JobLogResponse(
         Long id,
         Long jobId,
+        String correlationId,
         String level,
         String step,
         String message,

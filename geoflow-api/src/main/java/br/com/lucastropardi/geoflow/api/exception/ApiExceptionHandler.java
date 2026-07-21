@@ -37,6 +37,12 @@ public class ApiExceptionHandler {
                 .body(errorBody(HttpStatus.INTERNAL_SERVER_ERROR.value(), exception.getMessage()));
     }
 
+    @ExceptionHandler(JobReprocessNotAllowedException.class)
+    public ResponseEntity<Map<String, Object>> handleJobReprocessNotAllowed(JobReprocessNotAllowedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(errorBody(HttpStatus.CONFLICT.value(), exception.getMessage()));
+    }
+
     private Map<String, Object> errorBody(int status, String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", OffsetDateTime.now(applicationClock));

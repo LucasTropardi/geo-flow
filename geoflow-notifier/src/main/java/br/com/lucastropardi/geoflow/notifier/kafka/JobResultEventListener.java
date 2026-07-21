@@ -29,7 +29,11 @@ public class JobResultEventListener {
     )
     public void onJobCompleted(String message) throws JsonProcessingException {
         JobCompletedEvent event = objectMapper.readValue(message, JobCompletedEvent.class);
-        LOGGER.info("Received JobCompletedEvent for job {}", event.jobId());
+        LOGGER.info(
+                "Received JobCompletedEvent for job {} with correlationId {}",
+                event.jobId(),
+                event.correlationId()
+        );
         notifierSseService.notifyJobStatus(event.jobId());
     }
 
@@ -39,7 +43,13 @@ public class JobResultEventListener {
     )
     public void onJobFailed(String message) throws JsonProcessingException {
         JobFailedEvent event = objectMapper.readValue(message, JobFailedEvent.class);
-        LOGGER.info("Received JobFailedEvent for job {}", event.jobId());
+        LOGGER.info(
+                "Received JobFailedEvent for job {} with correlationId {} after {}/{} attempts",
+                event.jobId(),
+                event.correlationId(),
+                event.attemptCount(),
+                event.maxAttempts()
+        );
         notifierSseService.notifyJobStatus(event.jobId());
     }
 }

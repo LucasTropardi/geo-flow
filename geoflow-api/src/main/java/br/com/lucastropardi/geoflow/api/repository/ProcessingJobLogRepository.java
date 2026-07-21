@@ -15,14 +15,14 @@ public class ProcessingJobLogRepository {
 
     private static final String INSERT_SQL = """
             INSERT INTO processing_job_log (
-                id, job_id, level, step, message, created_at
+                id, job_id, correlation_id, level, step, message, created_at
             ) VALUES (
-                :id, :jobId, :level, :step, :message, :createdAt
+                :id, :jobId, :correlationId, :level, :step, :message, :createdAt
             )
             """;
 
     private static final String FIND_BY_JOB_ID_SQL = """
-            SELECT id, job_id, level, step, message, created_at
+            SELECT id, job_id, correlation_id, level, step, message, created_at
             FROM processing_job_log
             WHERE job_id = :jobId
             ORDER BY created_at ASC
@@ -38,6 +38,7 @@ public class ProcessingJobLogRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("id", logRecord.id())
                 .addValue("jobId", logRecord.jobId())
+                .addValue("correlationId", logRecord.correlationId())
                 .addValue("level", logRecord.level())
                 .addValue("step", logRecord.step())
                 .addValue("message", logRecord.message())
@@ -58,6 +59,7 @@ public class ProcessingJobLogRepository {
         return new ProcessingJobLogRecord(
                 rs.getLong("id"),
                 rs.getLong("job_id"),
+                rs.getString("correlation_id"),
                 rs.getString("level"),
                 rs.getString("step"),
                 rs.getString("message"),

@@ -1,7 +1,9 @@
 package br.com.lucastropardi.geoflow.processor.config;
 
 import br.com.lucastropardi.geoflow.shared.event.JobCompletedEvent;
+import br.com.lucastropardi.geoflow.shared.event.JobDeadLetterEvent;
 import br.com.lucastropardi.geoflow.shared.event.JobFailedEvent;
+import br.com.lucastropardi.geoflow.shared.event.JobRequestedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +37,22 @@ public class KafkaProducerConfig {
     }
 
     @Bean
+    public ProducerFactory<String, JobRequestedEvent> jobRequestedEventProducerFactory(
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
+            ObjectMapper objectMapper
+    ) {
+        return producerFactory(bootstrapServers, objectMapper);
+    }
+
+    @Bean
+    public ProducerFactory<String, JobDeadLetterEvent> jobDeadLetterEventProducerFactory(
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
+            ObjectMapper objectMapper
+    ) {
+        return producerFactory(bootstrapServers, objectMapper);
+    }
+
+    @Bean
     public KafkaTemplate<String, JobCompletedEvent> jobCompletedEventKafkaTemplate(
             ProducerFactory<String, JobCompletedEvent> jobCompletedEventProducerFactory
     ) {
@@ -46,6 +64,20 @@ public class KafkaProducerConfig {
             ProducerFactory<String, JobFailedEvent> jobFailedEventProducerFactory
     ) {
         return new KafkaTemplate<>(jobFailedEventProducerFactory);
+    }
+
+    @Bean
+    public KafkaTemplate<String, JobRequestedEvent> jobRequestedEventKafkaTemplate(
+            ProducerFactory<String, JobRequestedEvent> jobRequestedEventProducerFactory
+    ) {
+        return new KafkaTemplate<>(jobRequestedEventProducerFactory);
+    }
+
+    @Bean
+    public KafkaTemplate<String, JobDeadLetterEvent> jobDeadLetterEventKafkaTemplate(
+            ProducerFactory<String, JobDeadLetterEvent> jobDeadLetterEventProducerFactory
+    ) {
+        return new KafkaTemplate<>(jobDeadLetterEventProducerFactory);
     }
 
     private <T> ProducerFactory<String, T> producerFactory(String bootstrapServers, ObjectMapper objectMapper) {

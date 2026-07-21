@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record JobFailedEvent(
+public record JobDeadLetterEvent(
         @NotNull UUID eventId,
         @NotNull EventType eventType,
         @NotBlank String eventVersion,

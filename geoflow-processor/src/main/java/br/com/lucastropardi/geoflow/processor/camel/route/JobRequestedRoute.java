@@ -26,6 +26,10 @@ public class JobRequestedRoute extends RouteBuilder {
                 + "&valueDeserializer=org.apache.kafka.common.serialization.StringDeserializer")
                 .routeId("job-requested-route")
                 .convertBodyTo(String.class)
+                .to("seda:job-processing");
+
+        from("seda:job-processing?concurrentConsumers=2")
+                .routeId("job-processing-seda-route")
                 .process(jobRequestedMessageProcessor);
     }
 }

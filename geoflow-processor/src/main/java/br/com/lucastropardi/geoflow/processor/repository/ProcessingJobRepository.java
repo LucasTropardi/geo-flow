@@ -22,6 +22,8 @@ public class ProcessingJobRepository {
     private static final String MARK_PROCESSING_SQL = """
             UPDATE processing_job
             SET status = :status,
+                correlation_id = :correlationId,
+                attempt_count = attempt_count + 1,
                 started_at = COALESCE(started_at, :startedAt),
                 updated_at = :updatedAt
             WHERE id = :id
@@ -46,9 +48,19 @@ public class ProcessingJobRepository {
             WHERE id = :id
             """;
 
+    private static final String MARK_RETRY_PENDING_SQL = """
+            UPDATE processing_job
+            SET status = :status,
+                error_message = :errorMessage,
+                finished_at = NULL,
+                updated_at = :updatedAt
+            WHERE id = :id
+            """;
+
     private static final String FIND_BY_ID_SQL = """
             SELECT
                 id, tenant_id, name, job_type, status,
+                correlation_id, attempt_count, max_attempts,
                 min_lon, min_lat, max_lon, max_lat,
                 result_geojson, error_message,
                 created_at, started_at, finished_at, updated_at
@@ -62,10 +74,11 @@ public class ProcessingJobRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public int markProcessing(Long id, OffsetDateTime startedAt, OffsetDateTime updatedAt) {
+    public int markProcessing(Long id, String correlationId, OffsetDateTime startedAt, OffsetDateTime updatedAt) {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("id", id)
                 .addValue("status", JobStatus.PROCESSING.name())
+                .addValue("correlationId", correlationId)
                 .addValue("startedAt", startedAt)
                 .addValue("updatedAt", updatedAt);
 
@@ -94,6 +107,16 @@ public class ProcessingJobRepository {
         return jdbcTemplate.update(MARK_FAILED_SQL, params);
     }
 
+    public int markRetryPending(Long jobId, String errorMessage, OffsetDateTime updatedAt) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("id", jobId)
+                .addValue("status", JobStatus.RETRY_PENDING.name())
+                .addValue("errorMessage", errorMessage)
+                .addValue("updatedAt", updatedAt);
+
+        return jdbcTemplate.update(MARK_RETRY_PENDING_SQL, params);
+    }
+
     public Optional<ProcessingJobRecord> findById(Long id) {
         List<ProcessingJobRecord> results = jdbcTemplate.query(FIND_BY_ID_SQL, Map.of("id", id), rowMapper());
         return results.stream().findFirst();
@@ -120,6 +143,9 @@ public class ProcessingJobRepository {
                 rs.getString("name"),
                 JobType.valueOf(rs.getString("job_type")),
                 JobStatus.valueOf(rs.getString("status")),
+                rs.getString("correlation_id"),
+                rs.getInt("attempt_count"),
+                rs.getInt("max_attempts"),
                 area,
                 rs.getString("result_geojson"),
                 rs.getString("error_message"),

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.lucastropardi.geoflow.api.exception.IdGeneratorNotConfiguredException;
 import br.com.lucastropardi.geoflow.api.repository.IdGeneratorRepository;
+import java.time.Clock;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ class IdGeneratorServiceTest {
         when(idGeneratorRepository.findAndLockNextValue("processing_job"))
                 .thenReturn(Optional.of(1L), Optional.of(2L), Optional.of(3L));
 
-        IdGeneratorService service = new IdGeneratorService(idGeneratorRepository);
+        IdGeneratorService service = new IdGeneratorService(idGeneratorRepository, Clock.systemUTC());
 
         long first = service.nextId("processing_job");
         long second = service.nextId("processing_job");
@@ -48,7 +49,7 @@ class IdGeneratorServiceTest {
         when(idGeneratorRepository.findAndLockNextValue("missing_entity"))
                 .thenReturn(Optional.empty());
 
-        IdGeneratorService service = new IdGeneratorService(idGeneratorRepository);
+        IdGeneratorService service = new IdGeneratorService(idGeneratorRepository, Clock.systemUTC());
 
         assertThrows(IdGeneratorNotConfiguredException.class, () -> service.nextId("missing_entity"));
 

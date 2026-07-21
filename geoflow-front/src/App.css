@@ -10,6 +10,7 @@
 
 .hero-panel,
 .result-header,
+.failure-card,
 .page-grid,
 .result-grid {
   width: min(1180px, 100%);
@@ -57,11 +58,11 @@
 }
 
 .result-grid {
-  grid-template-columns: minmax(0, 0.7fr) minmax(280px, 0.3fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   grid-template-areas:
     "map json"
-    "logs json";
-  align-items: start;
+    "logs logs";
+  align-items: stretch;
 }
 
 .card {
@@ -77,6 +78,8 @@
 
 .map-card {
   grid-area: map;
+  display: flex;
+  flex-direction: column;
 }
 
 .json-card {
@@ -252,14 +255,22 @@
   margin-bottom: 24px;
 }
 
+.result-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .map-card .leaflet-map {
+  flex: 1;
   height: 480px;
   border-radius: 18px;
   overflow: hidden;
 }
 
 .empty-state {
-  min-height: 200px;
+  min-height: 480px;
   display: grid;
   place-items: center;
   border-radius: 18px;
@@ -269,7 +280,7 @@
 
 .json-card pre {
   margin: 0;
-  min-height: 100%;
+  min-height: 480px;
   flex: 1;
   overflow: auto;
   padding: 18px;
@@ -278,33 +289,112 @@
   color: #f2ebde;
 }
 
+.json-empty-state {
+  min-height: 480px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: 18px;
+  background: #171614;
+  color: #f2ebde;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.95rem;
+}
+
 .logs-list {
   display: grid;
   gap: 12px;
 }
 
+.trace-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(243, 238, 228, 0.95), rgba(255, 252, 247, 0.95));
+  border: 1px solid rgba(51, 39, 25, 0.08);
+  overflow: hidden;
+}
+
+.trace-field {
+  padding: 12px 14px;
+  min-width: 0;
+  border-left: 1px solid rgba(51, 39, 25, 0.08);
+}
+
+.trace-field:first-child {
+  border-left: 0;
+}
+
+.trace-field span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a6d4f;
+}
+
+.trace-field strong {
+  display: block;
+  color: #2e241a;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.logs-card .section-head {
+  margin-bottom: 14px;
+}
+
 .log-item {
-  padding: 16px 18px;
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
   border-radius: 18px;
   background: rgba(79, 61, 43, 0.05);
 }
 
-.log-item div {
+.log-head,
+.log-head-meta,
+.log-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  align-items: center;
+  min-width: 0;
 }
 
-.log-item span,
-.log-item time {
-  color: #80674e;
-  font-size: 0.9rem;
+.log-step {
+  color: #2f2419;
+  font-size: 0.98rem;
 }
 
-.log-item p {
-  margin: 0 0 8px;
+.log-body {
+  min-width: 0;
+}
+
+.log-message {
+  margin: 0;
   color: #433526;
+  min-width: 0;
+}
+
+.log-id,
+.log-time {
+  color: #80674e;
+  font-size: 0.84rem;
+}
+
+.log-id {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.log-message span:last-child {
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
@@ -333,9 +423,50 @@
     align-items: start;
   }
 
+  .trace-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trace-field:nth-child(3) {
+    border-left: 0;
+  }
+
+  .log-item {
+    gap: 8px;
+  }
+
+  .log-head,
+  .log-head-meta,
+  .log-meta {
+    display: grid;
+    justify-content: start;
+  }
+
+  .log-message {
+    display: grid;
+    gap: 4px;
+  }
+
   .map-card .leaflet-map,
-  .json-card pre {
+  .json-card pre,
+  .empty-state,
+  .json-empty-state {
     min-height: 320px;
     height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .trace-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-field {
+    border-left: 0;
+    border-top: 1px solid rgba(51, 39, 25, 0.08);
+  }
+
+  .trace-field:first-child {
+    border-top: 0;
   }
 }

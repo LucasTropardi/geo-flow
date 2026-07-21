@@ -12,11 +12,14 @@ spring:
 
 geoflow:
   timezone: America/Sao_Paulo
+  processing:
+    retry-delay: PT5S
   kafka:
     topics:
       job-requested: geoflow.job.requested
       job-completed: geoflow.job.completed
       job-failed: geoflow.job.failed
+      job-dead-letter: geoflow.job.dead-letter
 
 management:
   endpoints:
@@ -27,3 +30,6 @@ management:
 camel:
   springboot:
     main-run-controller: true
+  component:
+    seda:
+      queue-size: 100

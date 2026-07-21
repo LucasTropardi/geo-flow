@@ -10,9 +10,9 @@ public class ProcessingJobLogRepository {
 
     private static final String INSERT_SQL = """
             INSERT INTO processing_job_log (
-                id, job_id, level, step, message, created_at
+                id, job_id, correlation_id, level, step, message, created_at
             ) VALUES (
-                :id, :jobId, :level, :step, :message, :createdAt
+                :id, :jobId, :correlationId, :level, :step, :message, :createdAt
             )
             """;
 
@@ -25,6 +25,7 @@ public class ProcessingJobLogRepository {
     public int insertLog(
             Long id,
             Long jobId,
+            String correlationId,
             String level,
             String step,
             String message,
@@ -33,6 +34,7 @@ public class ProcessingJobLogRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("id", id)
                 .addValue("jobId", jobId)
+                .addValue("correlationId", correlationId)
                 .addValue("level", level)
                 .addValue("step", step)
                 .addValue("message", message)

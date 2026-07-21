@@ -5,11 +5,12 @@ import br.com.lucastropardi.geoflow.api.dto.CreateJobResponse;
 import br.com.lucastropardi.geoflow.api.dto.JobLogResponse;
 import br.com.lucastropardi.geoflow.api.dto.JobResponse;
 import br.com.lucastropardi.geoflow.api.exception.JobNotFoundException;
+import br.com.lucastropardi.geoflow.api.exception.JobReprocessNotAllowedException;
 import br.com.lucastropardi.geoflow.api.kafka.JobEventPublisher;
-import br.com.lucastropardi.geoflow.api.repository.ProcessingJobLogRepository;
-import br.com.lucastropardi.geoflow.api.repository.ProcessingJobRepository;
 import br.com.lucastropardi.geoflow.api.model.ProcessingJobLogRecord;
 import br.com.lucastropardi.geoflow.api.model.ProcessingJobRecord;
+import br.com.lucastropardi.geoflow.api.repository.ProcessingJobLogRepository;
+import br.com.lucastropardi.geoflow.api.repository.ProcessingJobRepository;
 import br.com.lucastropardi.geoflow.shared.event.JobRequestedEvent;
 import br.com.lucastropardi.geoflow.shared.enums.EventType;
 import br.com.lucastropardi.geoflow.shared.enums.JobStatus;
@@ -58,6 +59,9 @@ public class JobService {
                 request.name(),
                 request.jobType(),
                 JobStatus.PENDING,
+                correlationId.toString(),
+                0,
+                3,
                 request.area(),
                 null,
                 null,
@@ -71,6 +75,7 @@ public class JobService {
         processingJobLogRepository.insert(new ProcessingJobLogRecord(
                 idGeneratorService.nextId(PROCESSING_JOB_LOG_ENTITY),
                 jobId,
+                correlationId.toString(),
                 "INFO",
                 "JOB_CREATED",
                 "Job created and persisted by geoflow-api",
@@ -79,7 +84,48 @@ public class JobService {
 
         jobEventPublisher.publishJobRequested(buildJobRequestedEvent(request, jobId, correlationId));
 
-        return new CreateJobResponse(jobId, JobStatus.PENDING, now);
+        return new CreateJobResponse(jobId, JobStatus.PENDING, correlationId.toString(), 0, 3, now);
+    }
+
+    @Transactional
+    public JobResponse reprocessJob(Long id) {
+        ProcessingJobRecord currentJob = processingJobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException(id));
+
+        if (currentJob.status() != JobStatus.FAILED) {
+            throw new JobReprocessNotAllowedException(id, currentJob.status().name());
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(applicationClock);
+        UUID correlationId = UUID.randomUUID();
+        int updatedRows = processingJobRepository.markPendingForReprocess(id, correlationId.toString(), now);
+
+        if (updatedRows == 0) {
+            throw new JobReprocessNotAllowedException(id, currentJob.status().name());
+        }
+
+        processingJobLogRepository.insert(new ProcessingJobLogRecord(
+                idGeneratorService.nextId(PROCESSING_JOB_LOG_ENTITY),
+                id,
+                correlationId.toString(),
+                "INFO",
+                "MANUAL_REPROCESS_REQUESTED",
+                "Manual reprocessing requested by API and job reset to PENDING",
+                now
+        ));
+
+        jobEventPublisher.publishJobRequested(buildJobRequestedEvent(
+                new CreateJobRequest(
+                        currentJob.tenantId(),
+                        currentJob.name(),
+                        currentJob.jobType(),
+                        currentJob.area()
+                ),
+                id,
+                correlationId
+        ));
+
+        return getJob(id);
     }
 
     JobRequestedEvent buildJobRequestedEvent(CreateJobRequest request, Long jobId, UUID correlationId) {
@@ -107,6 +153,9 @@ public class JobService {
                 job.name(),
                 job.jobType(),
                 job.status(),
+                job.correlationId(),
+                job.attemptCount(),
+                job.maxAttempts(),
                 job.area(),
                 job.resultGeojson(),
                 job.errorMessage(),
@@ -124,6 +173,7 @@ public class JobService {
                 .map(log -> new JobLogResponse(
                         log.id(),
                         log.jobId(),
+                        log.correlationId(),
                         log.level(),
                         log.step(),
                         log.message(),

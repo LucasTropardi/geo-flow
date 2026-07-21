@@ -4,12 +4,15 @@ import { GeoJSON, MapContainer, TileLayer } from 'react-leaflet'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import './App.css'
 
-type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELED'
+type JobStatus = 'PENDING' | 'RETRY_PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELED'
 type JobType = 'BBOX_TO_GEOJSON'
 
 type CreateJobResponse = {
   id: number
   status: JobStatus
+  correlationId: string
+  attemptCount: number
+  maxAttempts: number
   createdAt: string
 }
 
@@ -19,6 +22,9 @@ type JobResponse = {
   name: string
   jobType: JobType
   status: JobStatus
+  correlationId: string | null
+  attemptCount: number
+  maxAttempts: number
   area: {
     minLon: number
     minLat: number
@@ -36,6 +42,7 @@ type JobResponse = {
 type JobLogResponse = {
   id: number
   jobId: number
+  correlationId: string | null
   level: string
   step: string
   message: string
@@ -235,7 +242,7 @@ function WaitingJobPage() {
 
     eventSource.addEventListener('subscribed', (event) => {
       const payload = JSON.parse((event as MessageEvent<string>).data) as JobNotificationStatusResponse
-      setMessage(`Job ${payload.jobId} ainda esta em ${payload.status}. Esperando conclusao...`)
+      setMessage(waitingStatusMessage(payload.jobId, payload.status))
     })
 
     eventSource.addEventListener('job-status', (event) => {
@@ -277,6 +284,7 @@ function JobResultPage() {
   const [logs, setLogs] = useState<JobLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reprocessing, setReprocessing] = useState(false)
 
   useEffect(() => {
     if (!jobId) {
@@ -344,6 +352,19 @@ function JobResultPage() {
   const parsedGeoJson = job.resultGeojson ? safeParseGeoJson(job.resultGeojson) : null
   const formattedGeoJson = formatGeoJson(job.resultGeojson)
 
+  async function handleReprocess() {
+    setReprocessing(true)
+    setError(null)
+
+    try {
+      const response = await api.post<JobResponse>(`/jobs/${job.id}/reprocess`)
+      navigate(`/jobs/${response.data.id}/waiting`, { replace: true })
+    } catch (requestError) {
+      setError(extractErrorMessage(requestError))
+      setReprocessing(false)
+    }
+  }
+
   return (
     <main className="shell">
       <section className="result-header">
@@ -355,10 +376,24 @@ function JobResultPage() {
             <strong>{job.status}</strong>.
           </p>
         </div>
-        <button className="secondary-button" type="button" onClick={() => navigate('/')}>
-          Novo job
-        </button>
+        <div className="result-actions">
+          {job.status === 'FAILED' ? (
+            <button
+              className="primary-button"
+              type="button"
+              onClick={handleReprocess}
+              disabled={reprocessing}
+            >
+              {reprocessing ? 'Reprocessando...' : 'Reprocessar job'}
+            </button>
+          ) : null}
+          <button className="secondary-button" type="button" onClick={() => navigate('/')}>
+            Novo job
+          </button>
+        </div>
       </section>
+
+      {error ? <section className="card failure-card"><p>{error}</p></section> : null}
 
       {job.status === 'FAILED' ? (
         <section className="card failure-card">
@@ -399,23 +434,50 @@ function JobResultPage() {
             <h2>GeoJSON</h2>
             <p>Resultado formatado para leitura rapida.</p>
           </div>
-          <pre>{formattedGeoJson}</pre>
+          {job.resultGeojson ? (
+            <pre>{formattedGeoJson}</pre>
+          ) : (
+            <div className="json-empty-state">Nenhum GeoJSON gerado.</div>
+          )}
         </section>
 
         <section className="card logs-card">
           <div className="section-head">
-            <h2>Logs do job</h2>
-            <p>Historico do processamento gravado no banco.</p>
+            <h2>Rastreabilidade e logs</h2>
+          </div>
+          <div className="trace-panel">
+            <div className="trace-field trace-field-wide">
+              <span>Correlation ID</span>
+              <strong>{job.correlationId ?? 'Nao informado'}</strong>
+            </div>
+            <div className="trace-field">
+              <span>Tentativas</span>
+              <strong>
+                {job.attemptCount} de {job.maxAttempts}
+              </strong>
+            </div>
+            <div className="trace-field">
+              <span>Criado em</span>
+              <strong>{formatDateTime(job.createdAt)}</strong>
+            </div>
+            <div className="trace-field">
+              <span>Atualizado em</span>
+              <strong>{formatDateTime(job.updatedAt)}</strong>
+            </div>
           </div>
           <div className="logs-list">
             {logs.map((log) => (
               <article key={log.id} className="log-item">
-                <div>
-                  <strong>{log.step}</strong>
-                  <span>{log.level}</span>
+                <div className="log-head">
+                  <strong className="log-step">{log.step}</strong>
+                  <div className="log-head-meta">
+                    <span className="log-id">#{log.id}</span>
+                    <time className="log-time">{formatDateTime(log.createdAt)}</time>
+                  </div>
                 </div>
-                <p>{log.message}</p>
-                <time>{formatDateTime(log.createdAt)}</time>
+                <div className="log-body">
+                  <p className="log-message">{log.message}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -475,6 +537,14 @@ function formatDateTime(value: string) {
     timeStyle: 'medium',
     timeZone: 'America/Sao_Paulo',
   }).format(new Date(value))
+}
+
+function waitingStatusMessage(jobId: number, status: JobStatus) {
+  if (status === 'RETRY_PENDING') {
+    return `Job ${jobId} falhou em uma tentativa e ja esta aguardando reprocessamento automatico.`
+  }
+
+  return `Job ${jobId} ainda esta em ${status}. Esperando conclusao...`
 }
 
 function extractErrorMessage(error: unknown) {

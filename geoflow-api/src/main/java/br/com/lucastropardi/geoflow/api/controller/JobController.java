@@ -41,4 +41,9 @@ public class JobController {
     public List<JobLogResponse> getJobLogs(@PathVariable Long id) {
         return jobService.getJobLogs(id);
     }
+
+    @PostMapping("/{id}/reprocess")
+    public JobResponse reprocessJob(@PathVariable Long id) {
+        return jobService.reprocessJob(id);
+    }
 }
