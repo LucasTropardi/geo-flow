@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: geoflow-api
+  datasource:
+    url: jdbc:postgresql://localhost:5432/geoflow
+    username: geoflow
+    password: geoflow123
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  flyway:
+    enabled: true
+
+geoflow:
+  timezone: America/Sao_Paulo
+  kafka:
+    topics:
+      job-requested: geoflow.job.requested
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

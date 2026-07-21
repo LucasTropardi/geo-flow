@@ -1,0 +1,28 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: geoflow-notifier
+  datasource:
+    url: jdbc:postgresql://localhost:5432/geoflow
+    username: geoflow
+    password: geoflow123
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+geoflow:
+  kafka:
+    topics:
+      job-completed: geoflow.job.completed
+      job-failed: geoflow.job.failed
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

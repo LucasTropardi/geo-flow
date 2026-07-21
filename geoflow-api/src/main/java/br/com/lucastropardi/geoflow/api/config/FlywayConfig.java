@@ -1,0 +1,24 @@
+package br.com.lucastropardi.geoflow.api.config;
+
+import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class FlywayConfig {
+
+    @Bean
+    public Flyway flyway(DataSource dataSource) {
+        return Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration")
+                .load();
+    }
+
+    @Bean
+    public InitializingBean flywayMigrationInitializer(Flyway flyway) {
+        return flyway::migrate;
+    }
+}
